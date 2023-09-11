@@ -1,37 +1,34 @@
-import axios from 'axios';
-
-// встановлюю заголовок "x-api-key" з моїм ключем
-const URL = 'https://api.thecatapi.com/v1/';
+// задаю URL і ключ API для отримання даних про котів
+const URL = 'https://api.thecatapi.com/v1';
 const API_KEY =
   'live_PIKO1MJV704js2hAajRTD1Mg66VFyBemTTvk82FxSLBXSXVkgAlIaYh8mYC3AutH';
-axios.defaults.headers.common['x-api-key'] = API_KEY;
 
-// функція для отримання колекції порід котів
-function fetchBreeds() {
-  const BREEDS_URL = `${URL}breeds`;
-  return axios.get(BREEDS_URL).then(res => {
-    // перевірка статусу відповіді сервера
-    if (res.status !== 200) {
-      throw new Error(res.status); // викликаю помилку, якщо статус не є 200
+// функція для отримання списку порід котів
+export function fetchBreeds() {
+  // виконую запит на сервер за списком порід котів і використовую ключ API
+  return fetch(`${URL}/breeds?api_key=${API_KEY}`).then(response => {
+    // перевіряю, чи був отриманий коректний відгук від сервера
+    if (!response.ok) {
+      // якщо відгук не був коректним (наприклад, 404 - не знайдено), виводжу помилку зі статусом відгука
+      throw new Error(response.status);
     }
-    return res.data; // повертаю масив порід котів з відповіді
+    // повертаю дані у форматі JSON для подальшого використання
+    return response.json();
   });
 }
 
-// функція для отримання випадкового зображення кота за породою (breedId)
-function fetchCatByBreed(breedId) {
-  const IMAGES_URL = `${URL}images/search`;
-  const params = new URLSearchParams({
-    breed_ids: breedId, // встановлюю параметр "breed_ids" з переданим breedId
-  });
-  return axios.get(`${IMAGES_URL}?${params}`).then(res => {
-    // перевірка статусу відповіді сервера
-    if (res.status !== 200) {
-      throw new Error(res.status); // викликаю помилку, якщо статус не є 200
+// функція для отримання випадкового кота за обраною породою
+export function fetchCatByBreed(breedId) {
+  // виконую запит на сервер за випадковим котом, задаючи параметр "breed_ids" для конкретної породи та використовую ключ API
+  return fetch(
+    `${URL}/images/search?api_key=${API_KEY}&breed_ids=${breedId}`
+  ).then(response => {
+    // перевіряю, чи був отриманий коректний відгук від сервера
+    if (!response.ok) {
+      // Якщо відгук не був коректним, виводжу помилку зі статусом відгука
+      throw new Error(response.status);
     }
-    return res.data[0]; // повертаю перше зображення з відповіді
+    // Повертаємо дані у форматі JSON для подальшого використання
+    return response.json();
   });
 }
-
-// експортую функції, щоб вони могли бути використані в інших частинах програми
-export { fetchBreeds, fetchCatByBreed };

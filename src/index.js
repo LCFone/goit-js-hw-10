@@ -1,96 +1,106 @@
-// імпортуєю необхідні модулі та стилі зовнішнього вигляду:
-import SlimSelect from 'slim-select'; // імпорт модуля SlimSelect для створення красивого випадаючого списку
-import 'slim-select/dist/slimselect.css'; // імпорт стилів SlimSelect
-import { fetchBreeds, fetchCatByBreed } from './cat-api.js'; // імпорт функцій для завантаження списку порід кішок та отримання інформації про кота
-import { Loading } from 'notiflix/build/notiflix-loading-aio'; // імпорт модуля для відображення анімаційного завантаження
-import { Notify } from 'notiflix/build/notiflix-notify-aio'; // імпорт модуля для відображення сповіщень
+// імпортую необхідні залежності і бібліотеки
+import SlimSelect from 'slim-select'; 
+import 'slim-select/dist/slimselect.css'; 
+import { fetchBreeds, fetchCatByBreed } from './cat-api.js'; 
+import { Loading } from 'notiflix/build/notiflix-loading-aio'; 
+import { Notify } from 'notiflix/build/notiflix-notify-aio'; 
 
-// створюю посилання на HTML-елементи, який ми буду змінювати
+// створюю посилання на DOM-елементи, які я буду використовувати
 const refs = {
-  select: document.querySelector('.breed-select'), // вибір породи кота
-  loader: document.querySelector('.loader'), // анімація завантаження
-  err: document.querySelector('.error'), // повідомлення про помилку
-  catCard: document.querySelector('.cat-info'), // інформація про кота
+  select: document.querySelector('.breed-select'),
+  loader: document.querySelector('.loader'),
+  error: document.querySelector('.error'),
+  catInfo: document.querySelector('.cat-info'),
 };
 
-// приховую елементи на сторінці, щоб показати їх пізніше, коли буде потрібно:
-refs.loader.style.display = 'none'; // приховую анімацію завантаження
-refs.err.style.display = 'none'; // приховую повідомлення про помилку
-refs.select.style.display = 'none'; // приховую вибір породи кота
-refs.catCard.style.display = 'none'; // приховую інформацію про кота
+// показую індикацію завантаження при запуску програми
+Loading.hourglass('Loading...', {
+  svgColor: '#f47a08',
+  svgSize: '150px',
+  messageFontSize: '40px',
+});
 
-// налаштовую анімацію завантаження:
-Loading.dots({
-    svgColor: '#5897fb',
-    svgSize: '130px',
-    messageFontSize: '30px',
-  });
+// викликаю функцію для створення селекту з породами котів
+createSelect();
 
-// завантажую список порід котів і створюємо випадаючий список:
-fetchBreeds()
-  .then(data => {
-    refs.select.style.display = 'flex'; // показую вибір породи кота
-    refs.loader.style.display = 'none'; // приховую анімацію завантаження
+// функція для створення селекту з породами котів
+function createSelect(data) {
+  // отримую список порід котів з сервера
+  fetchBreeds(data)
+    .then(data => {
+      // при отриманні даних від сервера, приховую індикацію завантаження та відображаю селект
+      refs.select.style.display = 'flex';
+      refs.loader.style.display = 'none';
 
-    createMarkupOptions(data); // створюю варіанти вибору породи кота
-    new SlimSelect({
-      select: refs.select, // вказую HTML-елемент для створення випадаючого списку
+      // створюю опції для селекту і ініціалізю slim-select
+      createMarkupOptions(data);
+      new SlimSelect({
+        select: refs.select,
+      });
+    })
+    .catch(error => {
+      // в разі помилки показую повідомлення про невдачу
+      Notify.failure(refs.error.textContent);
+    })
+    .finally(result => {
+      // після завершення операції (навіть при помилці), видаляю індикацію завантаження
+      Loading.remove();
     });
-  })
-  .catch(err => {
-    Notify.failure(refs.err.textContent); // показую повідомлення про помилку, якщо завантаження не вдалося
-  })
-  .finally(result => Loading.remove()); // завершую анімацію завантаження
+}
 
-// створюємо функцію createMarkupOptions, яка створює варіанти вибору породи кота:
+// функція для створення опцій для селекту
 function createMarkupOptions(arr) {
-    return arr
-      .map(({ id, name }) => {
-        console.log({ id, name });
-  
-        const option = `<option value=${id}>${name}</option>`;
-        refs.select.insertAdjacentHTML('beforeend', option); // додаю варіант вибору до випадаючого списку
-      })
-      .join('');
-  }
-  
+  return arr
+    .map(({ id, name }) => {
+      // генерую HTML-код опції для кожної породи кота
+      const option = `<option value=${id}>${name}</option>`;
+      // Ддодаю опцію до селекту
+      refs.select.insertAdjacentHTML('beforeend', option);
+    })
+    .join('');
+}
 
-// додаємо слухача подій для вибору породи кота:
-refs.select.addEventListener('change', e => {
-    const id = e.target.value; // отримуємо значення вибраної породи кота
-  
-    Loading.dots({
-      svgColor: '#5897fb',
-      svgSize: '130px',
-      messageFontSize: '30px',
-    });
-  
-    fetchCatByBreed(id) // завантажую інформацію про кота обраної породи
-      .then(catInfo => {
-        refs.catCard.style.display = 'flex'; // виводжу інформацію про кота
-        createMarkupCards(catInfo); // створюю вигляд для інформації про кота
-      })
-      .catch(err => {
-        Notify.failure(refs.err.textContent); // виводжу повідомлення про помилку, якщо завантаження не вдалося
-      })
-      .finally(result => Loading.remove()); // Ззавершую анімацію завантаження
+// додаю обробник події для селекту, який викликається при зміні вибору породи кота
+refs.select.addEventListener('change', event => {
+  const id = event.currentTarget.value;
+
+  // показую індикацію завантаження
+  Loading.hourglass('Loading...', {
+    svgColor: '#f47a08',
+    svgSize: '150px',
+    messageFontSize: '40px',
   });
-  
-// створюємо функцію createMarkupCards, яка створює вигляд для інформації про кота:
+
+  // запит на сервер для отримання даних про кота за обраною породою
+  fetchCatByBreed(id)
+    .then(catData => {
+      // при отриманні даних, відображаю контейнер з інформацією про кота
+      refs.catInfo.style.display = 'flex';
+      // викликаю функцію для створення картки кота
+      createMarkupCards(catData);
+    })
+    .catch(error => {
+      // в разі помилки показую повідомлення про невдачу
+      Notify.failure(refs.error.textContent);
+    })
+    .finally(result => {
+      // після завершення операції (навіть при помилці), видаляю індикацію завантаження
+      Loading.remove();
+    });
+});
+
+// функція для створення картки кота
 function createMarkupCards(data) {
-    const {
-      breeds: { name, description, temperament },
-      url,
-    } = data;
-  
-    const card = ` 
-        <img class="cat-img" src="${url}" alt="${name}"  >
-         <div class="cat-right">
-        <h1 class="name">${name}</h1>
-        <p class="description">${description}</p>
-        <p class="temperament"><span class="temperament-span">Temperament:</span> ${temperament}</p>    
-        </div>`;
-  
-    refs.catCard.innerHTML = card; // вставляємо інформацію про кота у відповідний блок
-  }
-  
+  const { breeds, url } = data[0];
+
+  // генерую HTML-код картки кота з отриманими даними
+  const card = `
+      <img class="cat-img" src="${url}" alt="${breeds[0].name}"  >
+      <div class="cat-right">
+        <h1 class="name">${breeds[0].name}</h1>
+        <p class="description">${breeds[0].description}</p>
+        <p class="temperament"><span class="temperament-span">Temperament:</span> ${breeds[0].temperament}</p>
+      </div>`;
+  // вставляю HTML-код картки кота в контейнер для відображення інформації про кота
+  refs.catInfo.innerHTML = card;
+}
